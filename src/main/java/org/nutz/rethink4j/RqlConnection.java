@@ -144,7 +144,7 @@ public class RqlConnection implements Closeable {
 		return new InputStreamReader(new ByteArrayInputStream(readRaw()));
 	}
 	
-	public NutMap startQuery(long id, Term t, Map<String, Object> optargs) {
+	public NutMap startQuery(long id, Term t, Map<String, Term> optargs) {
 		sendRaw(QueryType.START, id, Term.toBytes(t), optargs == null ? "{}".getBytes() : Json.toJson(optargs).getBytes());
 		return Json.fromJson(NutMap.class, readAsReader());
 	}
