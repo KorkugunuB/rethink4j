@@ -3,6 +3,7 @@ package org.nutz.rethink4j;
 import static org.junit.Assert.*;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.junit.After;
 import org.junit.Before;
@@ -92,6 +93,16 @@ public class RqlConnectionRawTest {
 		tableNames = (List<String>) r.get(0);
 		assertFalse(tableNames.contains(tableName));
 		
+		
+		// 试试一些无参数的方法
+		Term uuid = Term.mk("uuid");
+		map = conn.startQuery(0, uuid, null);
+		checkSuccessAtom(map);
+		r = map.getAs("r", List.class);
+		assertEquals(1, r.size());
+		assertNotNull(r.get(0));
+		UUID _id = UUID.fromString(r.get(0).toString());
+		System.out.println(_id);
 	}
 
 	public void checkSuccessAtom(NutMap map) {
