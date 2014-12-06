@@ -3,11 +3,13 @@ package org.nutz.rethink4j;
 import static org.junit.Assert.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.nutz.json.JsonFormat;
 import org.nutz.lang.util.NutMap;
 import org.nutz.rethink4j.bean.Term;
 
@@ -27,7 +29,7 @@ public class RqlConnectionRawTest {
 			conn.close();
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
 	public void test_raw_db_list() {
 		
@@ -103,9 +105,92 @@ public class RqlConnectionRawTest {
 		assertNotNull(r.get(0));
 		UUID _id = UUID.fromString(r.get(0).toString());
 		System.out.println(_id);
+		
+		// 把表建回来
+		map = conn.startQuery(0, tableCreate, null);
+		checkSuccessAtom(map);
+		
+		// 插入一条数据
+		NutMap user_wendal = new NutMap();
+		user_wendal.put("id", _id.toString());
+		user_wendal.put("age", 29);
+		user_wendal.put("city", "gz");
+		Term insert = Term.mk("insert", Term.mk("table", Term.mk("db", Term.mkDatum(dbName)), Term.mkDatum(tableName)), Term.mkDatum(user_wendal));
+		map = conn.startQuery(0, insert, null);
+		checkSuccessAtom(map);
+		
+		// 再插入一条
+		user_wendal = new NutMap();
+		user_wendal.put("id", UUID.randomUUID().toString());
+		user_wendal.put("age", 90);
+		user_wendal.put("city", "richmond");
+		insert = Term.mk("insert", Term.mk("table", Term.mk("db", Term.mkDatum(dbName)), Term.mkDatum(tableName)), Term.mkDatum(user_wendal));
+		map = conn.startQuery(0, insert, null);
+		checkSuccessAtom(map);
+		
+		// 看看总数
+		
+		Term user_count = Term.mk("count", Term.mk("table", Term.mk("db", Term.mkDatum(dbName)), Term.mkDatum(tableName)));
+		map = conn.startQuery(0, user_count, null);
+		checkSuccessAtom(map);
+		r = map.getAs("r", List.class);
+		assertEquals(2, r.get(0));
+		
+		// 取出第一个user (已知id)
+		Term user_get = Term.mk("get", Term.mk("table", Term.mk("db", Term.mkDatum(dbName)), Term.mkDatum(tableName)), Term.mkDatum(_id.toString()));
+		map = conn.startQuery(0, user_get, null);
+		checkSuccessAtom(map);
+		r = map.getAs("r", List.class);
+		Map<String, Object> user = (Map<String, Object>) r.get(0);
+		assertEquals(29, user.get("age"));
+		assertEquals("gz", user.get("city"));
+		
+		// 取出age=90的user, 直接匹配方法, 传Map
+		Term user_age_90 = Term.mk("filter", Term.mk("table", Term.mk("db", Term.mkDatum(dbName)), Term.mkDatum(tableName)), Term.mkDatum(new NutMap().setv("age", 90)));
+		map = conn.startQuery(0, user_age_90, null);
+		checkSuccessSequence(map);
+		r = map.getAs("r", List.class);
+		user = (Map<String, Object>) r.get(0);
+		assertEquals(90, user.get("age"));
+		
+		// 取出age=90的user, 直接匹配方法, 传(eq "age" 90)
+		Term eg = Term.mk("eq", Term.mk("bracket", Term.mk("implicit_var"), Term.mkDatum("age")), Term.mkDatum(90));
+		Term func = Term.mk("func", Term.mk("make_array", Term.mkDatum(2)), eg);
+		user_age_90 = Term.mk("filter", Term.mk("table", Term.mk("db", Term.mkDatum(dbName)), Term.mkDatum(tableName)), func);
+		map = conn.startQuery(0, user_age_90, null);
+		checkSuccessSequence(map);
+		r = map.getAs("r", List.class);
+		user = (Map<String, Object>) r.get(0);
+		assertEquals(90, user.get("age"));
+		System.out.println(user_age_90.toJson(JsonFormat.compact()));
+		
+		// 取出city是gz和richmond的用户
+		Term row_city = Term.mk("bracket", Term.mk("implicit_var"), Term.mkDatum("city"));
+		Term eg_city_gz = Term.mk("eq", row_city, Term.mkDatum("gz"));
+		Term eg_city_richmond = Term.mk("eq", row_city, Term.mkDatum("richmond"));
+		Term any_city = Term.mk("any", eg_city_gz, eg_city_richmond);
+		func = Term.mk("func", Term.mk("make_array", Term.mkDatum(4)), any_city);
+		Term user_any_city = Term.mk("filter", Term.mk("table", Term.mk("db", Term.mkDatum(dbName)), Term.mkDatum(tableName)), func);
+		map = conn.startQuery(0, user_any_city, null);
+		checkSuccessSequence(map);
+		r = map.getAs("r", List.class);
+		assertEquals(2, r.size());
+		
+		// 在上一个测试的基础上加入年龄排序, age降序
+		Term age_desc = Term.mk("orderby", user_any_city, Term.mk("desc", Term.mkDatum("age")));
+		map = conn.startQuery(0, age_desc, null);
+		checkSuccessAtom(map); // 返回的又变成一个结果
+		r = (List<Object>) map.getAs("r", List.class).get(0);
+		assertEquals(2, r.size());
+		assertEquals(90, ((Map)r.get(0)).get("age"));
+		assertEquals(29, ((Map)r.get(1)).get("age"));
 	}
 
 	public void checkSuccessAtom(NutMap map) {
 		assertEquals(map.getAs("r", List.class).get(0).toString(), 1, map.getInt("t"));
+	}
+	
+	public void checkSuccessSequence (NutMap map) {
+		assertEquals(map.getAs("r", List.class).get(0).toString(), 2, map.getInt("t"));
 	}
 }
