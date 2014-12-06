@@ -30,7 +30,7 @@ public class RqlConnectionRawTest {
 	@Test
 	public void test_raw_db_list() {
 		
-		Term dbList = Term.mk("db_list");
+		Term dbList = Term.mk("db_list"); // java. r.dbList().run(conn);
 		NutMap map = conn.startQuery(0, dbList, null);
 		checkSuccessAtom(map);
 		List<Object> r = map.getAs("r", List.class);
@@ -40,13 +40,13 @@ public class RqlConnectionRawTest {
 		
 		// 如果存在,那么删掉数据库
 		if (dbNames.contains(dbName)) {
-			Term dbDrop = Term.mk("db_drop", Term.mkDatum(dbName));
+			Term dbDrop = Term.mk("db_drop", Term.mkDatum(dbName)); // java: r.dbDrop(dnName).run(conn);
 			map = conn.startQuery(0, dbDrop, null);
 			checkSuccessAtom(map);
 		}
 		
 		// 创建数据库
-		Term dbCreate = Term.mk("db_create", Term.mkDatum(dbName));
+		Term dbCreate = Term.mk("db_create", Term.mkDatum(dbName)); // java: r.dbCreate(dnName).run(conn);
 		map = conn.startQuery(0, dbCreate, null);
 		checkSuccessAtom(map);
 		
@@ -59,18 +59,18 @@ public class RqlConnectionRawTest {
 		
 		String tableName = "user";
 		// 查一下表
-		Term tableList = Term.mk("table_list", Term.mk("db", Term.mkDatum(dbName)));
+		Term tableList = Term.mk("table_list", Term.mk("db", Term.mkDatum(dbName)));// java: r.db(dnName).tableList().run(conn);
 		map = conn.startQuery(0, tableList, Term.mkOptargs("db", dbName));
 		checkSuccessAtom(map);
 		r = map.getAs("r", List.class);
 		List<String> tableNames = (List<String>) r.get(0);
-		Term tableDrop =  Term.mk("table_drop", Term.mk("db", Term.mkDatum(dbName)), Term.mkDatum(tableName));
+		Term tableDrop =  Term.mk("table_drop", Term.mk("db", Term.mkDatum(dbName)), Term.mkDatum(tableName));// java: r.db(dnName).tableDrop(tableName).run(conn);
 		if (tableNames.contains(tableName)) { // 存在就先删除
 			map = conn.startQuery(0, tableDrop, null);
 			checkSuccessAtom(map);
 		}
 		// 建表
-		Term tableCreate = Term.mk("table_create", Term.mk("db", Term.mkDatum(dbName)), Term.mkDatum(tableName));
+		Term tableCreate = Term.mk("table_create", Term.mk("db", Term.mkDatum(dbName)), Term.mkDatum(tableName)); // java r.db(dnName).tableCreate(tableName).run(conn);
 		map = conn.startQuery(0, tableCreate, null);
 		checkSuccessAtom(map);
 		
