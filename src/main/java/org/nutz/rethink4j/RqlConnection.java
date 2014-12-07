@@ -38,6 +38,9 @@ public class RqlConnection implements Closeable {
 	DataInputStream in;
 	OutputStream out;
 	
+	protected RqlConnection() {
+	}
+	
 	public RqlConnection(String host, int port,String authkey, int timeout) {
 		super();
 		this.host = host;
@@ -85,10 +88,10 @@ public class RqlConnection implements Closeable {
 		return this;
 	}
 	
-	public RqlConnection reconnect() {
-		close();
-		return connect();
-	}
+//	public RqlConnection reconnect() {
+//		close();
+//		return connect();
+//	}
 	
 	public void sendRaw(QueryType qt, long id, byte[] t, byte[] optargs) {
 		try {
@@ -96,8 +99,8 @@ public class RqlConnection implements Closeable {
 				id = ID.getAndIncrement();
 			int sz = "[2]".length();
 			if (qt == QueryType.START) {
-				System.out.println("Term = "+new String(t));
-				System.out.println("Opts = "+new String(optargs));
+				//System.out.println("Term = "+new String(t));
+				//System.out.println("Opts = "+new String(optargs));
 				sz += 1/*,*/ + t.length /*Lenght of Term*/ + 1 /*,*/ + optargs.length;
 			}
 			out.write(long2byte(id, sz));
@@ -120,17 +123,17 @@ public class RqlConnection implements Closeable {
 		try {
 			byte[] buf = new byte[8];
 			in.readFully(buf); // id, handle it in futher.
-			System.out.println(Arrays.toString(buf));
+			//System.out.println(Arrays.toString(buf));
 			in.readFully(buf, 0, 4);
-			System.out.println(Arrays.toString(buf));
+			//System.out.println(Arrays.toString(buf));
 			final ByteBuffer bb = ByteBuffer.wrap(buf, 0, 4);
 		    bb.order(ByteOrder.LITTLE_ENDIAN);
 		    int sz = bb.getInt();
-		    System.out.println("sz="+sz);
+		    //System.out.println("sz="+sz);
 		    buf = new byte[sz]; // TODO do it in a better way
 		    in.readFully(buf);
-			String re = new String(buf);
-			System.out.println("Resp = " + re);
+			//String re = new String(buf);
+			//System.out.println("Resp = " + re);
 		    return buf;
 		} catch (IOException e) {
 			throw new RethinkRuntimeException(e);
