@@ -13,7 +13,6 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -68,17 +67,19 @@ public class RqlConnection implements Closeable {
 				in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
 				out = new BufferedOutputStream(socket.getOutputStream());
 				out.write(Version);
-				out.write(new byte[]{(byte)authkey.length, 0, 0, 0});
+				out.write(new byte[]{(byte)authkey.length, 0, 0, 0}); // TODO authkey can bigger than 256 byte
 				if (authkey.length > 0)
 					out.write(authkey);
 				out.write(Protocol);
 				out.flush();
 				byte[] buf = new byte[8];
-				int len = in.read(buf); // TODO 如果没fill完就挂了
-				if (len == 8 && "SUCCESS".equals(new String(buf).trim())) {
-					// ...
-				} else {
-					throw new RethinkRuntimeException("server resp err");
+				for (int i = 0; i < buf.length; i++) {
+					buf[i] = in.readByte();
+					if (buf[i] == 0)
+						break;
+				}
+				if (!"SUCCESS".equals(new String(buf).trim())) {
+					throw new RethinkRuntimeException("server drop connetion with msg : " + new String(buf));
 				}
 			} catch (IOException e) {
 				close();
@@ -165,11 +166,5 @@ public class RqlConnection implements Closeable {
 	    buffer.putLong(id);
 	    buffer.putInt(size);
 	    return buffer.array();
-	}
-	
-	public static void main(String[] args) {
-		RqlConnection conn = new RqlConnection("192.168.72.106", 28015, null, 1000);
-		conn.connect();
-		conn.close();
 	}
 }

@@ -8,11 +8,14 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.nutz.dao.pager.Pager;
+import org.nutz.json.Json;
+import org.nutz.json.JsonFormat;
 import org.nutz.lang.Lang;
 import org.nutz.lang.Strings;
 import org.nutz.lang.util.NutMap;
 import org.nutz.log.Logs;
 import org.nutz.log.Log;
+import org.nutz.rethink4j.RethinkRuntimeException;
 import org.nutz.rethink4j.RqlConnection;
 import org.nutz.rethink4j.bean.Term;
 import org.nutz.rethink4j.util.RqlDataSource;
@@ -55,7 +58,10 @@ public class SimpleRqlDao implements RqlDao {
 		try {
 			Term insert = Term.mk("insert", table(tableName), Term.mk("make_array", list));
 			NutMap re = conn.startQuery(0, insert, null);
-			log.debug("insert result: " + re);
+			Map<String, Object> r = (Map<String, Object>) re.getAs("r", List.class).get(0);
+			log.debug("insert result: " + r);
+			if (r.get("errors") != null && (Integer)r.get("errors") != 0)
+				throw new RethinkRuntimeException("insert fail: " + r);
 		} finally {
 			conn.close();
 		}
@@ -93,6 +99,22 @@ public class SimpleRqlDao implements RqlDao {
 	public boolean dbExist(String dbName) {
 		return dbList().contains(dbName);
 	}
+	
+	public void indexCreate(String tableName, String indexName, Map<String, Object> optargs) {
+		_run(Term.mk("index_create", Arrays.asList(table(tableName), Term.mkDatum(indexName)), to_optargs(optargs)));
+	}
+	
+	public void indexDrop(String tableName, String indexName) {
+		_run(Term.mk("index_drop", Arrays.asList(table(tableName), Term.mkDatum(indexName))));
+	}
+	
+	public boolean indexExist(String tableName, String indexName) {
+		return indexList(tableName).contains(indexName);
+	}
+	
+	public List<String> indexList(String tableName) {
+		return (List<String>) _run(Term.mk("index_list", table(tableName))).getAs("r", List.class).get(0);
+	}
 
 	public Map<String, Object> fetch(String tableName, Object key) {
 		Term get = Term.mk("get", table(tableName), Term.mkDatum(key));
@@ -103,17 +125,31 @@ public class SimpleRqlDao implements RqlDao {
 		_run(Term.mk("delete", Term.mk("get", table(tableName), Term.mkDatum(key))));
 	}
 
-	public void update(String tableName, Object key, Map<String, Object> up) {
-		throw Lang.noImplement();
+	public void updateOne(String tableName, Object key, Map<String, Object> up) {
+		_run(Term.mk("update", Term.mk("get", table(tableName), Term.mkDatum(key)), Term.mkDatum(up)));
+	}
+	
+	public void update(String tableName, String js, Map<String, Object> up) {
+		if (js == null)
+			_run(Term.mk("update", table(tableName), Term.mkDatum(up)));
+		else
+			_run(Term.mk("update", filter_js(table(tableName), js), Term.mkDatum(up)));
 	}
 
-	public List<Map<String, Object>> query(String tableName, String js, Map<String, Integer> order, Pager pager) {
+	public List<Map<String, Object>> query(String tableName, String js, Map<String, String> order, Pager pager) {
 		Term t = table(tableName);
 		if (!Strings.isBlank(js)) {
 			t = filter_js(t, js);
 		}
 		if (order != null && order.size() > 0) {
-			throw Lang.noImplement();
+			for (Entry<String, String> en : order.entrySet()) {
+				String key = en.getKey();
+				if (!key.startsWith("index:"))
+					t = Term.mk("orderby", t, Term.mk(en.getValue(), Term.mkDatum(en.getKey())));
+				else {
+					t= Term.mk("orderby", Arrays.asList(t), Term.mkOptargs("index", Term.mk(en.getValue(), Term.mkDatum(key.substring(6)))));
+				}
+			}
 		}
 		if (pager != null) {
 			if (pager.getOffset() > 0){
@@ -123,6 +159,7 @@ public class SimpleRqlDao implements RqlDao {
 				t = Term.mk("limit", t, Term.mkDatum(pager.getPageSize()));
 			}
 		}
+		System.out.println(Json.toJson(t, JsonFormat.compact()));
 		return (List<Map<String, Object>>) _run(t).get("r");
 	}
 	
@@ -172,6 +209,8 @@ public class SimpleRqlDao implements RqlDao {
 		try {
 			NutMap re = conn.startQuery(0, t, optargs);
 			log.debug("_run result: " + re);
+			if (re.getInt("t") > 4)
+				throw new RethinkRuntimeException(re.toString());
 			return re;
 		} finally {
 			conn.close();

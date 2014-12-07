@@ -14,7 +14,6 @@ import org.nutz.json.JsonFormat;
 import org.nutz.lang.util.NutMap;
 import org.nutz.rethink4j.bean.Term;
 import org.nutz.rethink4j.simple.SimpleRqlDataSource;
-import org.nutz.rethink4j.util.RqlDataSource;
 
 public class RqlConnectionRawTest {
 	
