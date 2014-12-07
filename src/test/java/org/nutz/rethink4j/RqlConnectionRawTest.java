@@ -20,7 +20,7 @@ public class RqlConnectionRawTest {
 	
 	@Before
 	public void init() {
-		conn = new RqlConnection("192.168.72.106", 28015, null, 1000);
+		conn = new RqlConnection("192.168.72.107", 28015, null, 1000);
 		conn.connect();
 	}
 	
@@ -35,7 +35,7 @@ public class RqlConnectionRawTest {
 	public void test_raw_db_list() {
 		// 带上profile
 		Map<String, Term> optargs = new HashMap<String, Term>();
-		//optargs.put("profile", Term.mkDatum(true));
+		optargs.put("profile", Term.mkDatum(true));
 		
 		Term dbList = Term.mk("db_list"); // java. r.dbList().run(conn);
 		NutMap map = conn.startQuery(0, dbList, null);

@@ -8,16 +8,20 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.nutz.json.Json;
 import org.nutz.json.JsonFormat;
-import org.nutz.lang.util.NutMap;
 
 public class Term {
 
 	TermType tt;
 	Datum datum;
 	List<Object> fz;
+	boolean hasVar;
+	
+	protected Term() {
+	}
 	
 	public Term(Datum datum) {
 		super();
@@ -33,6 +37,12 @@ public class Term {
 			return;
 		} else {
 			fz.add(args == null ? Collections.EMPTY_LIST : args);
+			for (Term term : args) {
+				if (term.hasVar) {
+					this.hasVar = true;
+					break;
+				}
+			}
 			if (optargs != null)
 				fz.add(optargs);
 		}
@@ -99,12 +109,53 @@ public class Term {
 		return out.toByteArray();
 	}
 	
-	public static void main(String[] _args) {
-		Term t = mk("insert", Arrays.asList(
-								mk("table", mkDatum("walnut")), 
-								mk("make_array", mkDatum(new NutMap()), mkDatum(new NutMap())
-							  )
-				), mkOptargs("durability", "hard"));
-		System.out.println(t.toJson(JsonFormat.compact()));
+	public static Term from(String str) {
+		return from(Json.fromJsonAsList(Object.class, str));
 	}
+	
+	@SuppressWarnings("unchecked")
+	public static Term from(List<Object> list) {
+		if (list == null)
+			return mkDatum(null);
+		if (list.isEmpty())
+			return null;
+		int tp = (Integer)list.get(0);
+		Term t = new Term();
+		for (TermType tt : TermType.values()) {
+			if (tt.index == tp) {
+				t.tt = tt;
+				break;
+			}
+		}
+		t.fz = new ArrayList<Object>();
+		t.fz.add(t.tt.index);
+		if (list.size() == 1)
+			return t;
+		List<Term> args = new ArrayList<Term>();
+		for(Object obj : (List<Object>)list.get(1)) {
+			args.add(from(obj));
+		}
+		t.fz.add(args);
+		if (list.size() == 2)
+			return t;
+		Map<String, Object> optargs = new HashMap<String, Object>();
+		for (Entry<String, Object> en : ((Map<String, Object>)list.get(2)).entrySet()) {
+			optargs.put(en.getKey(), from(en.getValue()));
+		}
+		t.fz.add(optargs);
+		return t;
+	}
+	
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	protected static Term from(Object obj) {
+		if (obj == null) {
+			return mkDatum(null);
+		}
+		if (obj instanceof List) {
+			return from((List)obj);
+		} else {
+			return mkDatum(obj);
+		}
+	}
+	
 }

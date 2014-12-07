@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.nutz.json.Json;
-import org.nutz.lang.Lang;
 import org.nutz.lang.Streams;
 import org.nutz.lang.util.NutMap;
 import org.nutz.rethink4j.bean.QueryType;
@@ -41,13 +40,11 @@ public class RqlConnection implements Closeable {
 	
 	public RqlConnection(String host, int port,String authkey, int timeout) {
 		super();
-		if (authkey != null) {
-			throw Lang.noImplement();
-		}
 		this.host = host;
 		this.port = port;
 		this.timeout = timeout;
 		this.authkey = authkey == null ? EMTRY : authkey.getBytes();
+		connect();
 	}
 	
 	public RqlConnection db(String db) {
