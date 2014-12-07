@@ -9,12 +9,17 @@ public class SimpleRqlDataSource implements RqlDataSource {
 	protected int port;
 	protected String authkey;
 	protected int timeout;
+	
+	public SimpleRqlDataSource() {
+		this(null, 0, null, -1);
+	}
+	
 	public SimpleRqlDataSource(String host, int port, String authkey, int timeout) {
 		super();
-		this.host = host;
-		this.port = port;
+		this.host = host == null ? "localhost" : host;
+		this.port = port == 0 ? 28015 : port;
 		this.authkey = authkey;
-		this.timeout = timeout;
+		this.timeout = timeout < 1 ? 2000 : timeout;
 	}
 	
 	public RqlConnection getConnection() {

@@ -16,7 +16,7 @@ public class SimpleReDaoTest {
 	
 	@Before
 	public void init() {
-		RqlDataSource ds = new SimpleRqlDataSource("192.168.72.107", 28015, null, 1000);
+		RqlDataSource ds = new SimpleRqlDataSource();
 		dao = new SimpleRqlDao(ds, "walnut_test");
 	}
 

@@ -13,6 +13,8 @@ import org.junit.Test;
 import org.nutz.json.JsonFormat;
 import org.nutz.lang.util.NutMap;
 import org.nutz.rethink4j.bean.Term;
+import org.nutz.rethink4j.simple.SimpleRqlDataSource;
+import org.nutz.rethink4j.util.RqlDataSource;
 
 public class RqlConnectionRawTest {
 	
@@ -20,8 +22,7 @@ public class RqlConnectionRawTest {
 	
 	@Before
 	public void init() {
-		conn = new RqlConnection("192.168.72.107", 28015, null, 1000);
-		conn.connect();
+		conn = new SimpleRqlDataSource().getConnection();
 	}
 	
 	@After
@@ -35,7 +36,7 @@ public class RqlConnectionRawTest {
 	public void test_raw_db_list() {
 		// 带上profile
 		Map<String, Term> optargs = new HashMap<String, Term>();
-		optargs.put("profile", Term.mkDatum(true));
+		//optargs.put("profile", Term.mkDatum(true));
 		
 		Term dbList = Term.mk("db_list"); // java. r.dbList().run(conn);
 		NutMap map = conn.startQuery(0, dbList, null);
